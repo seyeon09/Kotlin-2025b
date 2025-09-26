@@ -23,7 +23,7 @@ class MainActivity : AppCompatActivity() {
 
             var greeting: String = ""
             if(name.isNotEmpty()){
-                greeting = "안녕하세요 $(name)님 !"
+                greeting = "안녕하세요 ${name}님 !"
 
             } else{
                 greeting = "나의 이름은?"
