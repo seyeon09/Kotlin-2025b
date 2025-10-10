@@ -113,7 +113,7 @@ class MainActivity : AppCompatActivity() {
 
 2. **Initial Setup**:
    ```bash
-   cd D:\kotlin-2025a
+   cd D:\kotlin-2025b
    git add AppWeek05/
    git commit -m "week 05: ListView Apps initialization"
    ```
