@@ -21,8 +21,14 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".GreetingActivity"
+        <activity
+            android:name=".GreetingActivity"
             android:exported="false"/>
+
+        <activity
+            android:name=".ColorActivity"
+            android:exported="false"/>
+
     </application>
 
 </manifest>
