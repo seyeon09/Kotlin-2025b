@@ -2,159 +2,364 @@ package com.appweek06
 
 import android.os.Bundle
 import android.util.Log
-import android.widget.Adapter
-import android.widget.ArrayAdapter
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ListView
-import android.widget.TextView
-import android.widget.Toast
+import android.view.View
+import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
-    // 변수 선언 UI Component , 위젯
-    private lateinit var buttonAdd : Button // lateinit 나중에 바인딩 하겠다는 뜻
-    private lateinit var buttonClear : Button
-    private lateinit var editTextStudent : EditText
-    private lateinit var textViewCount : TextView
-    private lateinit var listView : ListView
+    // UI Components
+    private lateinit var radioGroup: RadioGroup
+    private lateinit var radioStudentList: RadioButton
+    private lateinit var radioShoppingCart: RadioButton
 
-    //collection
-    private lateinit var studentList : ArrayList<String>
-    private lateinit var adapter: ArrayAdapter<String>
+    private lateinit var listView: ListView
+    private lateinit var editTextInput: EditText
+    private lateinit var buttonAdd: Button
+    private lateinit var buttonClear: Button
+    private lateinit var textViewInfo: TextView
 
+    // Shopping Cart specific UI
+    private lateinit var layoutCartControls: LinearLayout
+    private lateinit var editTextPrice: EditText
+    private lateinit var editTextQuantity: EditText
 
-    companion object{
+    // Data Storage
+    private lateinit var studentList: ArrayList<Student>
+    private lateinit var cartItemList: ArrayList<CartItem>
+
+    // Adapters
+    private lateinit var studentAdapter: ArrayAdapter<Student>
+    private lateinit var cartAdapter: ArrayAdapter<CartItem>
+
+    // Current Mode
+    private var currentMode = AppMode.STUDENT_LIST
+
+    companion object {
         private const val TAG = "KotlinWeek06App"
     }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContentView(R.layout.activity_main)
 
-        Log.d(TAG,"onCreate : AppWeek05 started")
-        // 함수 선언
+        Log.d(TAG, "onCreate: AppWeek06 started")
+
+        initializeData()
         setupViews()
-        setupListViews()
+        setupAdapters()
         setupListeners()
+
+        // Set initial mode
+        setMode(AppMode.STUDENT_LIST)
         addInitialData()
     }
 
-    private fun setupViews(){
-        // 위의 위젯 바인딩 하기
-        listView = findViewById(R.id.listViewStudents)
-        editTextStudent = findViewById(R.id.editTextStudent)
-        buttonClear = findViewById(R.id.buttonClear)
-        buttonAdd = findViewById(R.id.buttonAdd)
-        textViewCount = findViewById(R.id.textViewCount)
-
+    private fun initializeData() {
         studentList = ArrayList()
-        Log.d(TAG,"Views initialized")
-    }
-    private fun setupListViews(){
+        cartItemList = ArrayList()
 
-        //어댑터 생성 및 arraylist와 연결
-        adapter = ArrayAdapter(this,android.R.layout.simple_list_item_1, studentList)
-        listView.adapter = adapter
-        Log.d(TAG,"ListView and Adapter setup completed")
+        Log.d(TAG, "Data structures initialized")
     }
-    private fun setupListeners(){
-        buttonAdd.setOnClickListener{
-            addStudent()
+
+    private fun setupViews() {
+        // Mode selection
+        radioGroup = findViewById(R.id.radioGroup)
+        radioStudentList = findViewById(R.id.radioStudentList)
+        radioShoppingCart = findViewById(R.id.radioShoppingCart)
+
+        // Common UI
+        listView = findViewById(R.id.listView)
+        editTextInput = findViewById(R.id.editTextInput)
+        buttonAdd = findViewById(R.id.buttonAdd)
+        buttonClear = findViewById(R.id.buttonClear)
+        textViewInfo = findViewById(R.id.textViewInfo)
+
+        // Shopping Cart specific
+        layoutCartControls = findViewById(R.id.layoutCartControls)
+        editTextPrice = findViewById(R.id.editTextPrice)
+        editTextQuantity = findViewById(R.id.editTextQuantity)
+
+
+        Log.d(TAG, "Views initialized")
+    }
+
+    private fun setupAdapters() {
+        studentAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, studentList)
+        cartAdapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, cartItemList)
+
+        Log.d(TAG, "Adapters setup completed")
+    }
+
+    private fun setupListeners() {
+        // Mode selection listeners
+        radioGroup.setOnCheckedChangeListener { _, checkedId ->
+            when (checkedId) {
+                R.id.radioStudentList -> setMode(AppMode.STUDENT_LIST)
+                R.id.radioShoppingCart -> setMode(AppMode.SHOPPING_CART)
+            }
         }
-        buttonClear.setOnClickListener {
-            claerAllStudents()
+
+        // Common button listeners
+        buttonAdd.setOnClickListener { addItem() }
+        buttonClear.setOnClickListener { clearAll() }
+
+        // ListView listeners
+        listView.setOnItemClickListener { _, _, position, _ ->
+            handleItemClick(position)
         }
-        // 람다함수 -> 이름 부를일이 없음, 일회용 젓가락 느낌
-        //position -> 리스트의 인덱스 느낌
-        // 안 쓰는 매개변수들은 _로 처리
-        // 팝업 띄우기 -> 토스트 사용
-        listView.setOnItemLongClickListener { _, _, position, _ -> removeStudent(position)
+
+        listView.setOnItemLongClickListener { _, _, position, _ ->
+            handleItemLongClick(position)
             true
         }
-        listView.setOnItemClickListener { _, _, position, _ ->
-            val studentName = studentList[position]
-            Toast.makeText(
-                this,
-                "Selected: $studentName (Position: ${position+1}",
-                Toast.LENGTH_SHORT).show()
-            Log.d(TAG,"Selected : ${studentName} (Position : ${position}")
-        }
-        Log.d(TAG,"Event listener setup complted")
+
+        Log.d(TAG, "Event listeners setup completed")
     }
 
-    private fun addStudent(){
-        val studentName = editTextStudent.text.toString().trim()
+    private fun setMode(mode: AppMode) {
+        currentMode = mode
 
-        if (studentName.isEmpty()){ //만약 칸이 비어있다면
-            Toast.makeText(this,"please enter a student name",Toast.LENGTH_SHORT).show()
-            Log.d(TAG,"Attempted to add empty student name")
+        // Update UI visibility
+        when (mode) {
+            AppMode.STUDENT_LIST -> {
+                editTextInput.hint = "Enter student name"
+                buttonAdd.text = "Add Student"
+                layoutCartControls.visibility = View.GONE
+
+                listView.adapter = studentAdapter
+            }
+            AppMode.SHOPPING_CART -> {
+                editTextInput.hint = "Enter item name"
+                buttonAdd.text = "Add Item"
+                layoutCartControls.visibility = View.VISIBLE
+
+                listView.adapter = cartAdapter
+                updateCartInfo()
+            }
+        }
+
+        updateInfoDisplay()
+        Log.d(TAG, "Mode changed to: ${mode.displayName}")
+    }
+
+    private fun addItem() {
+        val input = editTextInput.text.toString().trim()
+
+        if (input.isEmpty()) {
+            showToast("Please enter a ${currentMode.displayName.lowercase().dropLast(5)}")
             return
         }
-        if (studentList.contains(studentName)){ // 만약 이미 있는 값이라면 ( 중복값 )
-            Toast.makeText(this,"Student '$studentName' already exists",Toast.LENGTH_SHORT).show()
-            Log.d(TAG,"Attempted to add duplicat student '$studentName'")
+
+        when (currentMode) {
+            AppMode.STUDENT_LIST -> addStudent(input)
+            AppMode.SHOPPING_CART -> addCartItem(input)
+
+        }
+
+        editTextInput.text.clear()
+        clearAdditionalFields()
+        updateInfoDisplay()
+    }
+
+    private fun addStudent(name: String) {
+        if (studentList.any { it.name == name }) {
+            showToast("Student '$name' already exists")
             return
         }
 
-        // if문 다 지나고 이름 이제 추가 !!
-        studentList.add(studentName)
-        adapter.notifyDataSetChanged() // 내용 바뀌었다고 알려줌
-        editTextStudent.text.clear() // 지워야 또 다음 학생 입력
-        updateStudentCount()
-        Toast.makeText(this,"Added : $studentName", Toast.LENGTH_SHORT).show()
-        Log.d(TAG,"Added student $studentName(total : ${studentList.size})") // 전체 학생 수도 보여줌
+        val student = Student(name)
+        studentList.add(student)
+        studentAdapter.notifyDataSetChanged()
+
+        showToast("Added student: $name")
+        Log.d(TAG, "Added student: $name (Total: ${studentList.size})")
     }
-    private fun claerAllStudents(){
-        if (studentList.isEmpty()){
-            Toast.makeText(this,"List is already empty", Toast.LENGTH_SHORT).show()
+
+    private fun addCartItem(name: String) {
+        val priceText = editTextPrice.text.toString()
+        val quantityText = editTextQuantity.text.toString()
+
+        if (priceText.isEmpty()) {
+            showToast("Please enter price")
             return
         }
-        var count = studentList.size
-        studentList.clear() //진짜로 삭제하는 과정
-        // 변동사항이 있으면 항상 어댑터한테 알려서 화면을 바꿔줘야함
-        adapter.notifyDataSetChanged() // listview에 반영
-        updateStudentCount()
-        Toast.makeText(this,"Cleared all $count student", Toast.LENGTH_SHORT).show()
-        Log.d(TAG,"Cleared all student (Total cleared : $count)")
+
+        val price = priceText.toDoubleOrNull() ?: run {
+            showToast("Invalid price format")
+            return
+        }
+
+        val quantity = if (quantityText.isEmpty()) 1 else {
+            quantityText.toIntOrNull() ?: run {
+                showToast("Invalid quantity format")
+                return
+            }
+        }
+
+        if (price < 0 || quantity <= 0) {
+            showToast("Price and quantity must be positive")
+            return
+        }
+
+        val existingItem = cartItemList.find { it.name == name }
+        if (existingItem != null) {
+            existingItem.quantity += quantity
+            cartAdapter.notifyDataSetChanged()
+            showToast("Updated quantity for: $name")
+        } else {
+            val cartItem = CartItem(name, quantity, price)
+            cartItemList.add(cartItem)
+            cartAdapter.notifyDataSetChanged()
+            showToast("Added to cart: $name")
+        }
+
+        updateCartInfo()
+        Log.d(TAG, "Added cart item: $name x$quantity @ $$price")
     }
-    private fun removeStudent(position: Int){
-        if (position>=0 && position < studentList.size){ //인덱스의 범위가 정상일때만 동작
-            val removedStudent = studentList.removeAt(position) //removeAt 리스트로 부터 삭제된 원소를 리턴
-            // 삭제한 학생 이름 저장한 것
-            // 어댑터한테 알려주기
-            adapter.notifyDataSetChanged()
-            updateStudentCount()
-            Toast.makeText(
-                this,
-                "Removed: $removedStudent",
-                Toast.LENGTH_SHORT).show()
-            Log.d(TAG,"Removed student : $removedStudent (Remaining : ${studentList.size}")
+
+
+    private fun clearAdditionalFields() {
+        editTextPrice.text.clear()
+        editTextQuantity.text.clear()
+
+
+    }
+
+    private fun clearAll() {
+        when (currentMode) {
+            AppMode.STUDENT_LIST -> {
+                val count = studentList.size
+                studentList.clear()
+                studentAdapter.notifyDataSetChanged()
+                showToast("Cleared all $count students")
+            }
+            AppMode.SHOPPING_CART -> {
+                val count = cartItemList.size
+                cartItemList.clear()
+                cartAdapter.notifyDataSetChanged()
+                showToast("Cleared all $count items from cart")
+                updateCartInfo()
+            }
+        }
+
+        updateInfoDisplay()
+        Log.d(TAG, "Cleared all items in mode: ${currentMode.displayName}")
+    }
+
+    private fun handleItemClick(position: Int) {
+        when (currentMode) {
+            AppMode.STUDENT_LIST -> {
+                val student = studentList[position]
+                showToast("Selected: ${student.name}")
+            }
+            AppMode.SHOPPING_CART -> {
+                val item = cartItemList[position]
+                showItemDetailsDialog(item)
+            }
         }
     }
 
-    private fun updateStudentCount(){
-        textViewCount.text="Total Student : ${studentList.size}"
+    private fun handleItemLongClick(position: Int) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete Item")
+            .setMessage("Are you sure you want to delete this item?")
+            .setPositiveButton("Delete") { _, _ ->
+                removeItem(position)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
-    private fun addInitialData(){
-        val initialStudent = listOf("Kim","lee","park")
-        studentList.addAll(initialStudent)
-        adapter.notifyDataSetChanged()
-        updateStudentCount()
-        Log.d(TAG,"Added initial data : $initialStudent")
+    private fun removeItem(position: Int) {
+        when (currentMode) {
+            AppMode.STUDENT_LIST -> {
+                if (position < studentList.size) {
+                    val student = studentList.removeAt(position)
+                    studentAdapter.notifyDataSetChanged()
+                    showToast("Removed: ${student.name}")
+                }
+            }
+            AppMode.SHOPPING_CART -> {
+                if (position < cartItemList.size) {
+                    val item = cartItemList.removeAt(position)
+                    cartAdapter.notifyDataSetChanged()
+                    showToast("Removed: ${item.name}")
+                    updateCartInfo()
+                }
+            }
+        }
+        updateInfoDisplay()
+    }
+
+    private fun showItemDetailsDialog(item: CartItem) {
+        val message = """
+            Item: ${item.name}
+            Quantity: ${item.quantity}
+            Unit Price: $${String.format("%.2f", item.price)}
+            Total: $${String.format("%.2f", item.getTotalPrice())}
+            Added: ${SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.getDefault()).format(item.addedDate)}
+        """.trimIndent()
+
+        AlertDialog.Builder(this)
+            .setTitle("Item Details")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
+    private fun updateInfoDisplay() {
+        when (currentMode) {
+            AppMode.STUDENT_LIST -> {
+                textViewInfo.text = "Total Students: ${studentList.size}"
+            }
+            AppMode.SHOPPING_CART -> updateCartInfo()
+        }
+    }
+
+    private fun updateCartInfo() {
+        val totalItems = cartItemList.sumOf { it.quantity }
+        val totalValue = cartItemList.sumOf { it.getTotalPrice() }
+        textViewInfo.text = "Items: $totalItems | Total: $${String.format("%.2f", totalValue)}"
+    }
+
+    private fun addInitialData() {
+        // Add initial students
+        studentList.addAll(listOf(
+            Student("KIM"),
+            Student("LEE"),
+            Student("PARK")
+        ))
+
+        // Add initial cart items
+        cartItemList.addAll(listOf(
+            CartItem("Apple", 3, 2.0),
+            CartItem("Banana", 2, 1.0),
+            CartItem("Milk", 1, 3.0)
+        ))
+
+
+        // Notify all adapters
+        studentAdapter.notifyDataSetChanged()
+        cartAdapter.notifyDataSetChanged()
+
+        Log.d(TAG, "Initial data added to all modes")
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
     override fun onResume() {
         super.onResume()
-        Log.d(TAG,"onResume : Current Student count  ${studentList.size}")
+        Log.d(TAG, "onResume: Current mode: ${currentMode.displayName}")
     }
 
     override fun onPause() {
         super.onPause()
-        Log.d(TAG,"onPause : Saving state with  ${studentList.size}")
+        Log.d(TAG, "onPause: Saving state in mode: ${currentMode.displayName}")
     }
-
 }
