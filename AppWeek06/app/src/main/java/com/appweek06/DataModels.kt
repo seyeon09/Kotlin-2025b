@@ -1,28 +1,56 @@
 package com.appweek06
+
+import android.graphics.Color
 import java.util.*
 
-data class Student( // 3개의 매개변수를 가진 생성자
+data class Student(
     val name: String,
-    val id: String = UUID.randomUUID().toString(), // 랜덤하게 만듬
+    val id: String = UUID.randomUUID().toString(),
     val addedDate: Date = Date()
 )
 
-data class CartItem( // 5개의 변수
+data class CartItem(
     val name: String,
-    var quantity: Int = 1, // 초기값 개수 1
+    var quantity: Int = 1,
     val price: Double,
-    val id: String = UUID.randomUUID().toString(), // 랜덤으로
+    val id: String = UUID.randomUUID().toString(),
     val addedDate: Date = Date()
-) { // 클래스 시작
-    fun getTotalPrice(): Double = quantity * price // 메소드
-    // 코틀린 문법 숏폼으로 만든 것 = 수량 * 가격 리턴해줌
+) {
+    fun getTotalPrice(): Double = quantity * price
 
-    override fun toString(): String { // 오브젝트의 투스트링 오버라이드
+    override fun toString(): String {
         return "$name (x$quantity) - $%.2f".format(getTotalPrice())
-    } // 이름 x 수량 소수점 둘째자리까지의 가격
+    }
 }
 
-enum class AppMode(val displayName: String) { //enum 열거체를 하나 만든 것
+data class Task(
+    val title: String,
+    var description: String = "",
+    var isCompleted: Boolean = false,
+    val priority: TaskPriority,
+    val dueDate: Date? = null,
+    val id: String = UUID.randomUUID().toString(),
+    val createDate: Date = Date()
+) {
+    override fun toString(): String {
+        val status = if (isCompleted) "V" else "O"
+        val priorityIcon = when (priority){
+            TaskPriority.HIGH -> "!!!"
+            TaskPriority.MEDIUM -> "!!"
+            TaskPriority.LOW -> "!"
+        }
+        return "$status $priorityIcon $title"
+    }
+}
+
+enum class AppMode(val displayName: String) {
     STUDENT_LIST("Student List"),
     SHOPPING_CART("Shopping Cart"),
+    TASK_MANAGER("Task Manager"),
+}
+
+enum class TaskPriority (val displayName: String, val color: Int) {
+    HIGH("High", Color.RED),
+    MEDIUM("Medium", Color.BLUE),
+    LOW("Low", Color.GREEN)
 }
