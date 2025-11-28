@@ -2,10 +2,8 @@ package com.appweek12
 
 import android.graphics.Color
 import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import com.appweek12.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -14,8 +12,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding : ActivityMainBinding //나중에 할당
 
     // 카운트 변수
-    private var count = 0 // 이건 바로 할당
+    // private var count = 0 // 이건 바로 할당
 
+    //
+    private val viewModel: CounterViewModel by viewModels()
+    // 뷰 모델 변수 만들고 ( 바인딩 변수 만들듯이 ) by는 위임할 때 쓰는 것
+    // 저 변수에 액티비티 프로그램에서 늦게실행되는것
+    // lateinit은 널포인트익셉션 될 가능성 있지만
+    // by로 viewModels()를 하면 널 포인트익셉션이 안됨 늦게 생성해주는데도
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,55 +33,74 @@ class MainActivity : AppCompatActivity() {
         // 액티비티 생명주기 구성 변경 발생 막는 법, 간단하고 가벼운 ui 상태 저장
         // 이전의 상태를 저장해놨다가 다시 불러오는 것
         // 이걸 불러오려면 onSaveInstanceState 함수를 오버라이드해서 사용할 수 있음
-        if(savedInstanceState != null)
-            count=savedInstanceState.getInt("count",0)
+        //if(savedInstanceState != null)
+        //    count=savedInstanceState.getInt("count",0)
 
         // 리스너 호출 함수
         setupListeners()
-        updateCountDisplay() // 다시 불러들일때 업데이트해줘야 화면에 바뀌게 됨
+        // updateCountDisplay() // 다시 불러들일때 업데이트해줘야 화면에 바뀌게 됨
+
+        // 새로운 함수 다 주석처리 한 코드대신 만드는 것
+        fun setupObservers(){
+            viewModel.count.observe(this){
+                count -> binding.textViewCount.text = count.toString()
+
+        // 숫자에 따라 색깔 바뀌게 if여도 when이어도 됨
+            when{
+                count>0 -> binding.textViewCount.setTextColor(Color.BLUE)
+                count<0 -> binding.textViewCount.setTextColor(Color.RED)
+                else -> binding.textViewCount.setTextColor(Color.BLACK)
+        }
+            }
+        }
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putInt("count",count) // putInt 정수로 집어넣기
-    }
+//    override fun onSaveInstanceState(outState: Bundle) {
+//        super.onSaveInstanceState(outState)
+//        outState.putInt("count",count) // putInt 정수로 집어넣기
+//    }
 
     private fun setupListeners() {
 
         binding.buttonPlus.setOnClickListener{
-            count++ // count
-            // 실제 화면에 보이게 만드는 함수
-           updateCountDisplay()
+//            count++ // count
+//            // 실제 화면에 보이게 만드는 함수
+//           updateCountDisplay()
+
+            viewModel.increment()
         }
 
         binding.buttonMinus.setOnClickListener{
-            count-- // count 감소
-            // 실제 화면에 보이게 만드는 함수
-            updateCountDisplay()
+//            count-- // count 감소
+//            // 실제 화면에 보이게 만드는 함수
+//            updateCountDisplay()
+            viewModel.decrement()
         }
 
         binding.buttonReset.setOnClickListener{
-            count = 0 // count 리셋
-            // 실제 화면에 보이게 만드는 함수
-            updateCountDisplay()
+//            count = 0 // count 리셋
+//            // 실제 화면에 보이게 만드는 함수
+//            updateCountDisplay()
+            viewModel.reset()
         }
 
         binding.buttonPlus10.setOnClickListener{
-            count = count + 10 // count 10 증가
-            // 실제 화면에 보이게 만드는 함수
-            updateCountDisplay()
+//            count = count + 10 // count 10 증가
+//            // 실제 화면에 보이게 만드는 함수
+//            updateCountDisplay()
+            viewModel.incrementBy10()
         }
     }
 
     // 실제 프론트엔드 화면에 적용시켜주는 함수
-    private fun updateCountDisplay(){
-        binding.textViewCount.text=count.toString()
-
-        // 숫자에 따라 색깔 바뀌게 if여도 when이어도 됨
-        when{
-            count>0 -> binding.textViewCount.setTextColor(Color.BLUE)
-            count<0 -> binding.textViewCount.setTextColor(Color.RED)
-            else -> binding.textViewCount.setTextColor(Color.BLACK)
-        }
+//    private fun updateCountDisplay(){
+//        binding.textViewCount.text=count.toString()
+//
+//        // 숫자에 따라 색깔 바뀌게 if여도 when이어도 됨
+//        when{
+//            count>0 -> binding.textViewCount.setTextColor(Color.BLUE)
+//            count<0 -> binding.textViewCount.setTextColor(Color.RED)
+//            else -> binding.textViewCount.setTextColor(Color.BLACK)
+//        }
     }
 }
